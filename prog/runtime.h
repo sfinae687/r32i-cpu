@@ -25,125 +25,34 @@
 #define UART_CTRL            (UART_BASE_ADDR + 0x0Cu) /* bit0:tx_irq_en bit1:rx_irq_en */
 #define UART_BAUD_DIV        (UART_BASE_ADDR + 0x10u) /* baud divider */
 
-/*
- * Multi-device GPIO input (buttons)
- * Device n base: BTN_BASE_ADDR + n * BTN_STRIDE
- */
+/* Multi-device GPIO input (buttons) */
 #define BTN_BASE_ADDR        0x10000100u
 #define BTN_DEV_COUNT        4u
 #define BTN_STRIDE           0x10u
+#define BTN_BITS_PER_DEV     32u
+#define BTN_COUNT            (BTN_DEV_COUNT * BTN_BITS_PER_DEV)
 #define BTN_REG_DATA_OFF     0x00u /* bit per button, read-only */
 #define BTN_REG_EDGE_OFF     0x04u /* edge-capture, write-1-to-clear */
 
-/*
- * Multi-device GPIO output (LED)
- * Device n base: LED_BASE_ADDR + n * LED_STRIDE
- */
+/* Multi-device GPIO output (LED / 7-seg controller registers) */
 #define LED_BASE_ADDR        0x10000200u
 #define LED_DEV_COUNT        4u
 #define LED_STRIDE           0x10u
+#define LED_BITS_PER_DEV     32u
+#define LED_COUNT            (LED_DEV_COUNT * LED_BITS_PER_DEV)
 #define LED_REG_DATA_OFF     0x00u /* bit per LED, read/write */
 #define LED_REG_SET_OFF      0x04u /* write-1-to-set bits */
 #define LED_REG_CLR_OFF      0x08u /* write-1-to-clear bits */
-
-/* Legacy aliases for device 0 compatibility */
-#define BTN_DATA             (BTN_BASE_ADDR + BTN_REG_DATA_OFF)
-#define BTN_EDGE             (BTN_BASE_ADDR + BTN_REG_EDGE_OFF)
-#define LED_DATA             (LED_BASE_ADDR + LED_REG_DATA_OFF)
-#define LED_SET              (LED_BASE_ADDR + LED_REG_SET_OFF)
-#define LED_CLR              (LED_BASE_ADDR + LED_REG_CLR_OFF)
 
 #define REG32(addr)          (*(volatile uint32_t *)(uintptr_t)(addr))
 
 #define mmio_read32(addr)    REG32(addr)
 #define mmio_write32(addr,v) (REG32(addr) = (uint32_t)(v))
 
-static inline uintptr_t btn_base(uint32_t btn_dev)
-{
-	return (uintptr_t)BTN_BASE_ADDR + (uintptr_t)(btn_dev * BTN_STRIDE);
-}
+#include "buttons.h"
+#include "seg7.h"
 
-static inline uintptr_t led_base(uint32_t led_dev)
-{
-	return (uintptr_t)LED_BASE_ADDR + (uintptr_t)(led_dev * LED_STRIDE);
-}
-
-static inline uint32_t btn_read(uint32_t btn_dev)
-{
-	if (btn_dev >= BTN_DEV_COUNT) {
-		return 0u;
-	}
-	return mmio_read32(btn_base(btn_dev) + BTN_REG_DATA_OFF);
-}
-
-static inline uint32_t btn_read_edge(uint32_t btn_dev)
-{
-	if (btn_dev >= BTN_DEV_COUNT) {
-		return 0u;
-	}
-	return mmio_read32(btn_base(btn_dev) + BTN_REG_EDGE_OFF);
-}
-
-static inline void btn_clear_edge(uint32_t btn_dev, uint32_t mask)
-{
-	if (btn_dev >= BTN_DEV_COUNT) {
-		return;
-	}
-	mmio_write32(btn_base(btn_dev) + BTN_REG_EDGE_OFF, mask);
-}
-
-static inline int btn_is_pressed(uint32_t btn_dev, uint32_t bit_idx)
-{
-	if (bit_idx >= 32u) {
-		return 0;
-	}
-	return ((btn_read(btn_dev) >> bit_idx) & 0x1u) ? 1 : 0;
-}
-
-static inline uint32_t led_read(uint32_t led_dev)
-{
-	if (led_dev >= LED_DEV_COUNT) {
-		return 0u;
-	}
-	return mmio_read32(led_base(led_dev) + LED_REG_DATA_OFF);
-}
-
-static inline void led_write(uint32_t led_dev, uint32_t value)
-{
-	if (led_dev >= LED_DEV_COUNT) {
-		return;
-	}
-	mmio_write32(led_base(led_dev) + LED_REG_DATA_OFF, value);
-}
-
-static inline void led_set_bits(uint32_t led_dev, uint32_t mask)
-{
-	if (led_dev >= LED_DEV_COUNT) {
-		return;
-	}
-	mmio_write32(led_base(led_dev) + LED_REG_SET_OFF, mask);
-}
-
-static inline void led_clear_bits(uint32_t led_dev, uint32_t mask)
-{
-	if (led_dev >= LED_DEV_COUNT) {
-		return;
-	}
-	mmio_write32(led_base(led_dev) + LED_REG_CLR_OFF, mask);
-}
-
-static inline void led_toggle_bits(uint32_t led_dev, uint32_t mask)
-{
-	uint32_t cur;
-
-	if (led_dev >= LED_DEV_COUNT) {
-		return;
-	}
-	cur = led_read(led_dev);
-	led_write(led_dev, cur ^ mask);
-}
-
-extern void init();
-extern void always();
+extern void init(void);
+extern void always(void);
 
 #endif /* RUNTIME_H */
