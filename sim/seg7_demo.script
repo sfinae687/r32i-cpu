@@ -1,0 +1,77 @@
+# seg7_demo.script — Demonstrate 7-segment display control
+
+# Wait for initialization
+wait 100
+
+# Clear all displays
+seg7_clear
+
+# Show hexadecimal digits 0-F on dev0
+wait 50
+seg7_show_hex 0 0
+wait 100
+seg7_show_hex 0 1
+wait 100
+seg7_show_hex 0 2
+wait 100
+seg7_show_hex 0 3
+wait 100
+seg7_show_hex 0 4
+wait 100
+seg7_show_hex 0 5
+wait 100
+seg7_show_hex 0 6
+wait 100
+seg7_show_hex 0 7
+wait 100
+seg7_show_hex 0 8
+wait 100
+seg7_show_hex 0 9
+wait 100
+seg7_show_hex 0 A
+wait 100
+seg7_show_hex 0 B
+wait 100
+seg7_show_hex 0 C
+wait 100
+seg7_show_hex 0 D
+wait 100
+seg7_show_hex 0 E
+wait 100
+seg7_show_hex 0 F
+wait 200
+
+# Display decimal value 1234 across all 4 displays (dev0=ones, dev1=tens, dev2=hundreds, dev3=thousands)
+seg7_show_u32 1234
+wait 200
+
+# Show decimal digits on each device individually
+seg7_show_dec 0 5
+seg7_show_dec 1 6
+seg7_show_dec 2 7
+seg7_show_dec 3 8
+wait 200
+
+# Write raw patterns (manually encoded 7-segment bits)
+# Example: 0x3F = segments A,B,C,D,E,F (displays "0")
+seg7_write 0 3F
+wait 100
+
+# Example: 0x06 = segments B,C (displays "1")
+seg7_write 1 06
+wait 100
+
+# Example: 0x5B = segments A,B,G,E,D (displays "2")
+seg7_write 2 5B
+wait 100
+
+# Example: 0xFF = all segments on (full display)
+seg7_write 3 FF
+wait 200
+
+# Clear all displays again
+seg7_clear
+wait 100
+
+# Finish simulation
+finish
