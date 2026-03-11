@@ -11,7 +11,7 @@
 #   --with-main           Inject a shim so user can write main() instead of
 #                         init() / always(). main() is called once from init().
 #   --no-runtime-utils    Exclude runtime/uart.c, runtime/seg7.c,
-#                         runtime/buttons.c from the build.
+#                         runtime/button.c from the build.
 #   --extra-flags <f>     Append extra flags to the compiler command.
 #
 # Program model (without --with-main):
@@ -120,9 +120,9 @@ ALL_SOURCES=()
 # 1) Startup assembly (must be first so _start lands at address 0)
 ALL_SOURCES+=("$RUNTIME_DIR/runtime.s")
 
-# 2) Runtime utility C files (uart, seg7, buttons)
+# 2) Runtime utility C files (uart, seg7, button)
 if [[ $NO_RUNTIME_UTILS -eq 0 ]]; then
-    for util in soft_div.c uart.c seg7.c buttons.c; do
+    for util in soft_div.c uart.c seg7.c button.c; do
         [[ -f "$RUNTIME_DIR/$util" ]] && ALL_SOURCES+=("$RUNTIME_DIR/$util")
     done
 fi

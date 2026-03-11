@@ -420,10 +420,8 @@ module tb_top;
         input [1023:0] fname;
         integer        fd;
         integer        r;
-        reg [255:0]    line;
-        reg [255:0]    cmd;
-        // $sscanf %s fills cmd MSB-first: cmd[255:248]=char0, cmd[247:240]=char1 ...
-        reg [7:0]      c0, c1, c2, c3, c4, c5, c6;
+        string         line;
+        string         cmd;
         integer        a, b, c_int;
         reg [31:0]     val, val2;
         reg [7:0]      rx_byte;
@@ -434,108 +432,118 @@ module tb_top;
             end else begin
                 $display("[SCRIPT] Running '%0s'", fname);
                 while (!$feof(fd)) begin
-                    line = 256'h0;
+                    line = "";
                     r    = $fgets(line, fd);
                     if (r == 0) begin
                         // EOF or empty read
                     end else begin
-                        cmd = 256'h0;
+                        cmd = "";
                         r   = $sscanf(line, " %s", cmd);
                         if (r < 1) begin
                             // blank line — skip
-                        end else begin
-                            c0 = cmd[255:248]; c1 = cmd[247:240];
-                            c2 = cmd[239:232]; c3 = cmd[231:224];
-                            c4 = cmd[223:216]; c5 = cmd[215:208];
-                            c6 = cmd[207:200];
-
-                            if (c0 == "#") begin
-                                // comment — skip
-
-                            end else if (c0 == "w") begin
-                                // wait <cycles>
-                                a = 0;
-                                $sscanf(line, " %s %d", cmd, a);
+                        end else if (cmd == "#") begin
+                            // comment — skip
+                        end else if (cmd == "wait") begin
+                            // wait <cycles>
+                            a = 0;
+                            r = $sscanf(line, " %s %d", cmd, a);
+                            if (r == 2) begin
                                 $display("[SCRIPT] wait %0d", a);
                                 repeat (a) @(posedge clk);
-
-                            end else if (c0 == "f") begin
-                                // finish
-                                $display("[SCRIPT] finish");
-                                $fclose(fd);
-                                $finish;
-
-                            end else if (c0 == "b" && c3 == "_") begin
-                                // btn_* family — dispatch by char at position 4
-                                if (c4 == "s") begin
-                                    // btn_set <dev> <val_hex>
-                                    a = 0; val = 32'h0;
-                                    $sscanf(line, " %s %d %h", cmd, a, val);
-                                    $display("[SCRIPT] btn_set dev=%0d val=0x%08h", a, val);
-                                    btn_set_dev(a, val);
-                                end else if (c4 == "p" && c5 == "r") begin
-                                    // btn_press <dev> <bit>
-                                    a = 0; b = 0;
-                                    $sscanf(line, " %s %d %d", cmd, a, b);
-                                    $display("[SCRIPT] btn_press dev=%0d bit=%0d", a, b);
-                                    btn_press_bit(a, b);
-                                end else if (c4 == "p" && c5 == "u") begin
-                                    // btn_pulse <dev> <bit> <hold_cycles>
-                                    a = 0; b = 0; c_int = 1;
-                                    $sscanf(line, " %s %d %d %d", cmd, a, b, c_int);
-                                    $display("[SCRIPT] btn_pulse dev=%0d bit=%0d hold=%0d", a, b, c_int);
-                                    btn_pulse_bit(a, b, c_int);
-                                end else if (c4 == "r") begin
-                                    // btn_release <dev> <bit>
-                                    a = 0; b = 0;
-                                    $sscanf(line, " %s %d %d", cmd, a, b);
-                                    $display("[SCRIPT] btn_release dev=%0d bit=%0d", a, b);
-                                    btn_release_bit(a, b);
-                                end else if (c4 == "c") begin
-                                    // btn_clear
-                                    $display("[SCRIPT] btn_clear");
-                                    btn_clear_all();
-                                end else begin
-                                    $display("[SCRIPT] WARNING: unknown btn command '%0s'", cmd);
-                                end
-
-                            end else if (c0 == "u" && c1 == "a" && c2 == "r" && c3 == "t") begin
-                                // uart_* family — distinguish by char at position 6:
-                                //   "uart_rx"   -> c6 = 'x'
-                                //   "uart_recv" -> c6 = 'e'
-                                if (c6 == "x") begin
-                                    val = 32'h0;
-                                    $sscanf(line, " %s %h", cmd, val);
-                                    $display("[SCRIPT] uart_rx 0x%02h", val[7:0]);
-                                    uart_send_rx_byte(val[7:0]);
-                                end else if (c6 == "e") begin
-                                    $display("[SCRIPT] uart_recv (waiting for TX byte...)");
-                                    uart_recv_tx_byte(rx_byte);
-                                    $display("[SCRIPT] uart_recv got: 0x%02h  '%c'", rx_byte, rx_byte);
-                                end else begin
-                                    $display("[SCRIPT] WARNING: unknown uart command '%0s'", cmd);
-                                end
-
-                            end else if (c0 == "l" && c1 == "e" && c2 == "d") begin
-                                // led_* family — distinguish by char at position 4:
-                                //   "led_print" -> c4 = 'p'
-                                //   "led_wait"  -> c4 = 'w'
-                                if (c4 == "p") begin
-                                    led_print_all();
-                                end else if (c4 == "w") begin
-                                    // led_wait <dev> <mask_hex> <exp_hex> <max_cycles>
-                                    a = 0; val = 32'h0; val2 = 32'h0; c_int = 50000;
-                                    $sscanf(line, " %s %d %h %h %d", cmd, a, val, val2, c_int);
-                                    $display("[SCRIPT] led_wait dev=%0d mask=0x%08h exp=0x%08h max=%0d",
-                                             a, val, val2, c_int);
-                                    led_wait_mask(a, val, val2, c_int);
-                                end else begin
-                                    $display("[SCRIPT] WARNING: unknown led command '%0s'", cmd);
-                                end
-
                             end else begin
-                                $display("[SCRIPT] WARNING: unknown command '%0s' (ignored)", cmd);
+                                $display("[SCRIPT] WARNING: bad wait syntax: '%0s'", line);
                             end
+
+                        end else if (cmd == "finish") begin
+                            // finish
+                            $display("[SCRIPT] finish");
+                            $fclose(fd);
+                            $finish;
+
+                        end else if (cmd == "btn_set") begin
+                            // btn_set <dev> <val_hex>
+                            a = 0; val = 32'h0;
+                            r = $sscanf(line, " %s %d %h", cmd, a, val);
+                            if (r == 3) begin
+                                $display("[SCRIPT] btn_set dev=%0d val=0x%08h", a, val);
+                                btn_set_dev(a, val);
+                            end else begin
+                                $display("[SCRIPT] WARNING: bad btn_set syntax: '%0s'", line);
+                            end
+
+                        end else if (cmd == "btn_press") begin
+                            // btn_press <dev> <bit>
+                            a = 0; b = 0;
+                            r = $sscanf(line, " %s %d %d", cmd, a, b);
+                            if (r == 3) begin
+                                $display("[SCRIPT] btn_press dev=%0d bit=%0d", a, b);
+                                btn_press_bit(a, b);
+                            end else begin
+                                $display("[SCRIPT] WARNING: bad btn_press syntax: '%0s'", line);
+                            end
+
+                        end else if (cmd == "btn_pulse") begin
+                            // btn_pulse <dev> <bit> <hold_cycles>
+                            a = 0; b = 0; c_int = 1;
+                            r = $sscanf(line, " %s %d %d %d", cmd, a, b, c_int);
+                            if (r == 4) begin
+                                $display("[SCRIPT] btn_pulse dev=%0d bit=%0d hold=%0d", a, b, c_int);
+                                btn_pulse_bit(a, b, c_int);
+                            end else begin
+                                $display("[SCRIPT] WARNING: bad btn_pulse syntax: '%0s'", line);
+                            end
+
+                        end else if (cmd == "btn_release") begin
+                            // btn_release <dev> <bit>
+                            a = 0; b = 0;
+                            r = $sscanf(line, " %s %d %d", cmd, a, b);
+                            if (r == 3) begin
+                                $display("[SCRIPT] btn_release dev=%0d bit=%0d", a, b);
+                                btn_release_bit(a, b);
+                            end else begin
+                                $display("[SCRIPT] WARNING: bad btn_release syntax: '%0s'", line);
+                            end
+
+                        end else if (cmd == "btn_clear") begin
+                            // btn_clear
+                            $display("[SCRIPT] btn_clear");
+                            btn_clear_all();
+
+                        end else if (cmd == "uart_rx") begin
+                            // uart_rx <byte_hex>
+                            val = 32'h0;
+                            r = $sscanf(line, " %s %h", cmd, val);
+                            if (r == 2) begin
+                                $display("[SCRIPT] uart_rx 0x%02h", val[7:0]);
+                                uart_send_rx_byte(val[7:0]);
+                            end else begin
+                                $display("[SCRIPT] WARNING: bad uart_rx syntax: '%0s'", line);
+                            end
+
+                        end else if (cmd == "uart_recv") begin
+                            // uart_recv
+                            $display("[SCRIPT] uart_recv (waiting for TX byte...)");
+                            uart_recv_tx_byte(rx_byte);
+                            $display("[SCRIPT] uart_recv got: 0x%02h  '%c'", rx_byte, rx_byte);
+
+                        end else if (cmd == "led_print") begin
+                            // led_print
+                            led_print_all();
+
+                        end else if (cmd == "led_wait") begin
+                            // led_wait <dev> <mask_hex> <exp_hex> <max_cycles>
+                            a = 0; val = 32'h0; val2 = 32'h0; c_int = 50000;
+                            r = $sscanf(line, " %s %d %h %h %d", cmd, a, val, val2, c_int);
+                            if (r == 5) begin
+                                $display("[SCRIPT] led_wait dev=%0d mask=0x%08h exp=0x%08h max=%0d",
+                                         a, val, val2, c_int);
+                                led_wait_mask(a, val, val2, c_int);
+                            end else begin
+                                $display("[SCRIPT] WARNING: bad led_wait syntax: '%0s'", line);
+                            end
+
+                        end else begin
+                            $display("[SCRIPT] WARNING: unknown command '%0s' (ignored)", cmd);
                         end
                     end
                 end // while

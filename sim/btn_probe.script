@@ -1,0 +1,6 @@
+wait 3000
+btn_set 0 00000001
+wait 500
+btn_set 0 00000000
+wait 500
+finish

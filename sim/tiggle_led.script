@@ -1,0 +1,7 @@
+# Stimulus for tiggle_led
+wait 200
+led_wait 0 0000007f 0000003f 200000
+btn_pulse 0 0 5000
+wait 5000
+led_wait 0 0000007f 00000006 400000
+finish
