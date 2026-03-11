@@ -55,7 +55,7 @@ module tb_fibnaco();
     imem #(
         .ADDR_WIDTH(6),          // 64 words = 256 bytes
         .DATA_WIDTH(32),
-        .FILE_INIT("/home/ll06/info/cpu_sources/prog/fib.hex")    // Absolute path to Fibonacci program
+        .FILE_INIT("/home/ll06/info/cpu_sources/prog/test/fib/fib.hex")    // Absolute path to Fibonacci program
     ) imem_inst (
         .addr(imem_addr[7:2]),   // Word-aligned address
         .dout(imem_rdata)

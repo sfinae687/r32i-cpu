@@ -67,6 +67,7 @@ module tb_uart_cpu;
     integer     char_count;
     integer     test_cycles;
     integer     uart_tx_write_count;
+    integer     verify_fail_count;
     reg [7:0]   received_chars [0:255];
     reg [7:0]   expected_msg [0:13];
     
@@ -217,6 +218,7 @@ module tb_uart_cpu;
         char_count = 0;
         test_cycles = 0;
         uart_tx_write_count = 0;
+        verify_fail_count = 0;
         
         // Open VCD dump
         $dumpfile("tb_uart_cpu.vcd");
@@ -270,13 +272,18 @@ module tb_uart_cpu;
                     $display("[PASS] Char[%0d]: got=0x%02h exp=0x%02h", 
                              i, received_chars[i], expected_msg[i]);
                 end else begin
+                    verify_fail_count = verify_fail_count + 1;
                     $display("[FAIL] Char[%0d]: got=0x%02h exp=0x%02h", 
                              i, received_chars[i], expected_msg[i]);
                 end
             end
-            
-            $display("\n[PASS] All 13 characters received correctly!");
-            $display("Message: Hello, UART!");
+
+            if (verify_fail_count == 0) begin
+                $display("\n[PASS] All 13 characters received correctly!");
+                $display("Message: Hello, UART!");
+            end else begin
+                $display("\n[FAIL] %0d character(s) mismatched.", verify_fail_count);
+            end
         end else begin
             $display("[FAIL] Expected 13 characters, got %0d", char_count);
         end

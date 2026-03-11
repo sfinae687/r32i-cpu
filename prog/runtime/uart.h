@@ -9,6 +9,18 @@
 #define UART_CTRL_TX_IRQ_EN    (1u << 0)
 #define UART_CTRL_RX_IRQ_EN    (1u << 1)
 
+/*
+ * Example (blocking RX):
+ *   uint8_t ch = uart_getc();
+ *   uart_putc(ch);
+ *
+ * Example (non-blocking RX):
+ *   uint8_t ch;
+ *   if (uart_getc_nonblock(&ch)) {
+ *       uart_putc(ch);
+ *   }
+ */
+
 void uart_set_baud_div(uint32_t div);
 void uart_set_ctrl(uint32_t ctrl);
 uint32_t uart_get_status(void);
