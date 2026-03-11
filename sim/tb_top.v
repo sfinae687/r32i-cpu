@@ -22,6 +22,15 @@
 //   led_wait_mask(dev, mask, exp, max)   poll until (led&mask)==exp
 //   led_print_all()                      print all four LED values
 //
+// ---- 7-Segment Display Helper Tasks ----
+//   seg7_read_raw(dev, value)            read raw LED/seg7 pattern
+//   seg7_write_raw(dev, value)           write raw 7-segment pattern
+//   seg7_show_hex(dev, hex_digit)        display hex digit (0-F)
+//   seg7_show_dec_digit(dev, dec_digit)  display decimal digit (0-9)
+//   seg7_show_u32(value)                 display 32-bit value across all 4 seg7 devs
+//   seg7_wait_pattern(dev, pattern, max) wait for pattern match
+//   seg7_clear_all()                     turn off all 7-segment displays
+//
 // ---- Plusargs ----
 //   +PROG=<file>      Load IMEM from hex file at simulation start
 //   +TIMEOUT=<n>      Stop after N cycles post-reset (default 2 000 000)
@@ -223,6 +232,50 @@ module tb_top;
     endtask
 
     // -------------------------------------------------------------------------
+    // 7-segment display constants
+    // -------------------------------------------------------------------------
+    localparam [7:0] SEG7_SEG_A   = 8'h01;   // bit 0
+    localparam [7:0] SEG7_SEG_B   = 8'h02;   // bit 1
+    localparam [7:0] SEG7_SEG_C   = 8'h04;   // bit 2
+    localparam [7:0] SEG7_SEG_D   = 8'h08;   // bit 3
+    localparam [7:0] SEG7_SEG_E   = 8'h10;   // bit 4
+    localparam [7:0] SEG7_SEG_F   = 8'h20;   // bit 5
+    localparam [7:0] SEG7_SEG_G   = 8'h40;   // bit 6
+    localparam [7:0] SEG7_SEG_DP  = 8'h80;   // bit 7
+
+    // Common patterns for hexadecimal digits (0-9, A-F)
+    // Encode pattern: bit6=G, bit5=F, bit4=E, bit3=D, bit2=C, bit1=B, bit0=A
+    //     A
+    //   F   B
+    //     G
+    //   E   C
+    //     D
+    function [7:0] seg7_encode_hex;
+        input [3:0] hex_digit;
+        begin
+            case (hex_digit)
+                4'h0: seg7_encode_hex = 8'b0011_1111;  // A,B,C,D,E,F (no G)
+                4'h1: seg7_encode_hex = 8'b0000_0110;  // B,C
+                4'h2: seg7_encode_hex = 8'b0101_1011;  // A,B,G,E,D
+                4'h3: seg7_encode_hex = 8'b0100_1111;  // A,B,C,D,G
+                4'h4: seg7_encode_hex = 8'b0110_0110;  // F,B,G,C
+                4'h5: seg7_encode_hex = 8'b0110_1101;  // A,F,G,C,D
+                4'h6: seg7_encode_hex = 8'b0111_1101;  // A,F,G,E,C,D
+                4'h7: seg7_encode_hex = 8'b0000_0111;  // A,B,C
+                4'h8: seg7_encode_hex = 8'b0111_1111;  // all segments
+                4'h9: seg7_encode_hex = 8'b0110_1111;  // A,B,C,D,F,G
+                4'hA: seg7_encode_hex = 8'b0111_0111;  // A,B,C,E,F,G
+                4'hB: seg7_encode_hex = 8'b0111_1100;  // C,D,E,F,G
+                4'hC: seg7_encode_hex = 8'b0011_1001;  // A,D,E,F
+                4'hD: seg7_encode_hex = 8'b0101_1110;  // B,C,D,E,G
+                4'hE: seg7_encode_hex = 8'b0111_1001;  // A,D,E,F,G
+                4'hF: seg7_encode_hex = 8'b0111_0001;  // A,E,F,G
+                default: seg7_encode_hex = 8'h00;
+            endcase
+        end
+    endfunction
+
+    // -------------------------------------------------------------------------
     // UART RX helper: inject one byte into the CPU's UART RX pin
     //   The byte is transmitted LSB-first at BAUD_DIV_SIM * CLK_PERIOD ns/bit.
     // -------------------------------------------------------------------------
@@ -400,6 +453,136 @@ module tb_top;
     endtask
 
     // =========================================================================
+    // 7-SEGMENT DISPLAY HELPER TASKS
+    // =========================================================================
+
+    // Read the raw 7-segment pattern from a controller (dev 0-3)
+    task seg7_read_raw;
+        input  integer dev;
+        output [31:0]  value;
+        begin
+            led_read_dev(dev, value);
+        end
+    endtask
+
+    // Write a raw 7-segment pattern to a controller
+    // This writes to the DATA register (offset 0x00) of the seg7_ctrl device
+    task seg7_write_raw;
+        input integer dev;
+        input [31:0]  value;
+        begin
+            case (dev)
+                0: begin
+                    // Force write to LED0's seg7_cont DATA register
+                    force dut.seg7_ctrl_inst0.led_data = value;
+                    @(posedge clk);
+                    release dut.seg7_ctrl_inst0.led_data;
+                end
+                1: begin
+                    force dut.seg7_ctrl_inst1.led_data = value;
+                    @(posedge clk);
+                    release dut.seg7_ctrl_inst1.led_data;
+                end
+                2: begin
+                    force dut.seg7_ctrl_inst2.led_data = value;
+                    @(posedge clk);
+                    release dut.seg7_ctrl_inst2.led_data;
+                end
+                3: begin
+                    force dut.seg7_ctrl_inst3.led_data = value;
+                    @(posedge clk);
+                    release dut.seg7_ctrl_inst3.led_data;
+                end
+            endcase
+            $display("[SEG7] dev%0d write_raw value=0x%08h", dev, value);
+        end
+    endtask
+
+    // Display a hexadecimal digit (0-15) on a 7-segment controller
+    task seg7_show_hex;
+        input integer dev;
+        input [3:0]   hex_digit;
+        reg [7:0]     pattern;
+        begin
+            pattern = seg7_encode_hex(hex_digit);
+            seg7_write_raw(dev, {24'h0, pattern});
+            $display("[SEG7] dev%0d show_hex digit=0x%x pattern=0x%02h", dev, hex_digit, pattern);
+        end
+    endtask
+
+    // Display a decimal digit (0-9) on a 7-segment controller
+    // For decimal digits, use the same encoding as hex 0-9
+    task seg7_show_dec_digit;
+        input integer dev;
+        input [3:0]   dec_digit;
+        reg [7:0]     pattern;
+        begin
+            if (dec_digit >= 10) begin
+                $display("[SEG7] WARNING: dec_digit %0d out of range (0-9)", dec_digit);
+                pattern = 8'h00;
+            end else begin
+                pattern = seg7_encode_hex(dec_digit);
+            end
+            seg7_write_raw(dev, {24'h0, pattern});
+            $display("[SEG7] dev%0d show_dec_digit %0d pattern=0x%02h", dev, dec_digit, pattern);
+        end
+    endtask
+
+    // Display a 32-bit unsigned value across all 4 seg7 controllers (dev 0-3)
+    // dev0 = ones place, dev1 = tens, dev2 = hundreds, dev3 = thousands
+    task seg7_show_u32;
+        input [31:0] value;
+        integer idx;
+        integer digit;
+        integer temp_val;
+        begin
+            temp_val = value % 10000;  // only show last 4 digits
+            for (idx = 0; idx < 4; idx = idx + 1) begin
+                digit = temp_val % 10;
+                seg7_show_dec_digit(idx, digit);
+                temp_val = temp_val / 10;
+            end
+            $display("[SEG7] show_u32 value=%0d (displayed as %04d)", value, value % 10000);
+        end
+    endtask
+
+    // Clear all 7-segment displays (turn off all segments on all 4 devices)
+    task seg7_clear_all;
+        integer i;
+        begin
+            for (i = 0; i < 4; i = i + 1) begin
+                seg7_write_raw(i, 32'h0);
+            end
+            $display("[SEG7] clear_all");
+        end
+    endtask
+
+    // Wait until a 7-segment display shows a specific pattern within max_cycles
+    // Returns success/failure
+    task seg7_wait_pattern;
+        input  integer dev;
+        input  [31:0]  expected_pattern;
+        input  integer max_cycles;
+        integer        cnt;
+        reg [31:0]     cur;
+        begin
+            cnt = 0;
+            seg7_read_raw(dev, cur);
+            while ((cur & 32'h0000_00FF) !== (expected_pattern & 32'h0000_00FF) && cnt < max_cycles) begin
+                @(posedge clk);
+                cnt = cnt + 1;
+                seg7_read_raw(dev, cur);
+            end
+            if ((cur & 32'h0000_00FF) === (expected_pattern & 32'h0000_00FF))
+                $display("[SEG7] dev%0d wait_pattern matched 0x%02h (after %0d cycles)",
+                         dev, expected_pattern & 32'h0000_00FF, cnt);
+            else
+                $display("[FAIL] seg7_wait_pattern dev%0d  expected=0x%02h  got=0x%02h  timeout",
+                         dev, expected_pattern & 32'h0000_00FF, cur & 32'h0000_00FF);
+        end
+    endtask
+
+    // =========================================================================
     // Script-file driven stimulus
     //
     // File format — one command per line, # starts a comment:
@@ -414,6 +597,12 @@ module tb_top;
     //   uart_recv                     wait for next UART TX byte and print it
     //   led_print
     //   led_wait <dev> <mask_hex> <expected_hex> <max_cycles>
+    //   seg7_write <dev> <pattern_hex> write raw 7-segment pattern
+    //   seg7_show_hex <dev> <hex_digit> display hex digit 0-F
+    //   seg7_show_dec <dev> <dec_digit> display decimal digit 0-9
+    //   seg7_show_u32 <value>         display 32-bit value across dev0-3
+    //   seg7_wait <dev> <pattern_hex> <max_cycles> wait for pattern match
+    //   seg7_clear                    clear all 7-segment displays
     //   finish
     // =========================================================================
     task run_script;
@@ -541,6 +730,66 @@ module tb_top;
                             end else begin
                                 $display("[SCRIPT] WARNING: bad led_wait syntax: '%0s'", line);
                             end
+
+                        end else if (cmd == "seg7_write") begin
+                            // seg7_write <dev> <pattern_hex>
+                            a = 0; val = 32'h0;
+                            r = $sscanf(line, " %s %d %h", cmd, a, val);
+                            if (r == 3) begin
+                                $display("[SCRIPT] seg7_write dev=%0d pattern=0x%08h", a, val);
+                                seg7_write_raw(a, val);
+                            end else begin
+                                $display("[SCRIPT] WARNING: bad seg7_write syntax: '%0s'", line);
+                            end
+
+                        end else if (cmd == "seg7_show_hex") begin
+                            // seg7_show_hex <dev> <hex_digit>
+                            a = 0; b = 0;
+                            r = $sscanf(line, " %s %d %h", cmd, a, b);
+                            if (r == 3) begin
+                                $display("[SCRIPT] seg7_show_hex dev=%0d digit=0x%x", a, b);
+                                seg7_show_hex(a, b[3:0]);
+                            end else begin
+                                $display("[SCRIPT] WARNING: bad seg7_show_hex syntax: '%0s'", line);
+                            end
+
+                        end else if (cmd == "seg7_show_dec") begin
+                            // seg7_show_dec <dev> <dec_digit>
+                            a = 0; b = 0;
+                            r = $sscanf(line, " %s %d %d", cmd, a, b);
+                            if (r == 3) begin
+                                $display("[SCRIPT] seg7_show_dec dev=%0d digit=%0d", a, b);
+                                seg7_show_dec_digit(a, b[3:0]);
+                            end else begin
+                                $display("[SCRIPT] WARNING: bad seg7_show_dec syntax: '%0s'", line);
+                            end
+
+                        end else if (cmd == "seg7_show_u32") begin
+                            // seg7_show_u32 <value>
+                            val = 32'h0;
+                            r = $sscanf(line, " %s %d", cmd, val);
+                            if (r == 2) begin
+                                $display("[SCRIPT] seg7_show_u32 value=%0d", val);
+                                seg7_show_u32(val);
+                            end else begin
+                                $display("[SCRIPT] WARNING: bad seg7_show_u32 syntax: '%0s'", line);
+                            end
+
+                        end else if (cmd == "seg7_wait") begin
+                            // seg7_wait <dev> <pattern_hex> <max_cycles>
+                            a = 0; val = 32'h0; c_int = 50000;
+                            r = $sscanf(line, " %s %d %h %d", cmd, a, val, c_int);
+                            if (r == 4) begin
+                                $display("[SCRIPT] seg7_wait dev=%0d pattern=0x%08h max=%0d", a, val, c_int);
+                                seg7_wait_pattern(a, val, c_int);
+                            end else begin
+                                $display("[SCRIPT] WARNING: bad seg7_wait syntax: '%0s'", line);
+                            end
+
+                        end else if (cmd == "seg7_clear") begin
+                            // seg7_clear
+                            $display("[SCRIPT] seg7_clear");
+                            seg7_clear_all();
 
                         end else begin
                             $display("[SCRIPT] WARNING: unknown command '%0s' (ignored)", cmd);
