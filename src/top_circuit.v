@@ -132,6 +132,14 @@ module top_circuit(
     wire [31:0] btn_rdata1;
     wire [31:0] btn_rdata2;
     wire [31:0] btn_rdata3;
+    wire [31:0] led_rdata0;
+    wire [31:0] led_rdata1;
+    wire [31:0] led_rdata2;
+    wire [31:0] led_rdata3;
+    wire [31:0] led_data0;
+    wire [31:0] led_data1;
+    wire [31:0] led_data2;
+    wire [31:0] led_data3;
 
     // -------------------------------------------------------------------------
     // Core + memory/peripheral instances
@@ -182,8 +190,7 @@ module top_circuit(
     // -------------------------------------------------------------------------
     // GPIO MMIO controllers
     // -------------------------------------------------------------------------
-    // Buttons are implemented as one controller per runtime device.
-    // LEDs remain placeholder outputs until led_cont is added.
+    // Buttons/LEDs are implemented as one controller per runtime device.
     wire        btn_cs = hit_btn;
     wire        led_cs = hit_led;
     wire        gpio_we = dmem_we;
@@ -194,12 +201,10 @@ module top_circuit(
     wire        btn_cs1 = btn_cs && (btn_dev_idx == 2'd1);
     wire        btn_cs2 = btn_cs && (btn_dev_idx == 2'd2);
     wire        btn_cs3 = btn_cs && (btn_dev_idx == 2'd3);
-
-    // Placeholder behavior until dedicated LED controller is added at this location.
-    assign led0 = 32'h0000_0000;
-    assign led1 = 32'h0000_0000;
-    assign led2 = 32'h0000_0000;
-    assign led3 = 32'h0000_0000;
+    wire        led_cs0 = led_cs && (led_dev_idx == 2'd0);
+    wire        led_cs1 = led_cs && (led_dev_idx == 2'd1);
+    wire        led_cs2 = led_cs && (led_dev_idx == 2'd2);
+    wire        led_cs3 = led_cs && (led_dev_idx == 2'd3);
 
     btn_cont btn_ctrl_inst0 (
         .clk   (clk),
@@ -254,25 +259,63 @@ module top_circuit(
                        (btn_dev_idx == 2'd2) ? btn_rdata2 :
                                                btn_rdata3;
 
-    assign led_rdata = 32'h0000_0000;
+    seg7_cont seg7_ctrl_inst0 (
+        .clk   (clk),
+        .rst_n (rst_n_i),
+        .cs    (led_cs0),
+        .we    (gpio_we),
+        .be    (gpio_be),
+        .addr  (gpio_addr),
+        .wdata (gpio_wdata),
+        .rdata (led_rdata0),
+        .led   (led_data0)
+    );
 
-    // ---------------- GPIO controller placement template ----------------
-    // led_cont led_ctrl_inst (
-    //     .clk   (clk),
-    //     .rst_n (rst_n_i),
-    //     .cs    (led_cs),
-    //     .we    (gpio_we),
-    //     .be    (gpio_be),
-    //     .addr  (gpio_addr),
-    //     .wdata (gpio_wdata),
-    //     .rdata (led_rdata),
-    //     // addr decode usage example:
-    //     // .dev_idx(led_dev_idx), .reg_off(led_reg_off)
-    //     .led0  (led0),
-    //     .led1  (led1),
-    //     .led2  (led2),
-    //     .led3  (led3)
-    // );
+    seg7_cont seg7_ctrl_inst1 (
+        .clk   (clk),
+        .rst_n (rst_n_i),
+        .cs    (led_cs1),
+        .we    (gpio_we),
+        .be    (gpio_be),
+        .addr  (gpio_addr),
+        .wdata (gpio_wdata),
+        .rdata (led_rdata1),
+        .led   (led_data1)
+    );
+
+    seg7_cont seg7_ctrl_inst2 (
+        .clk   (clk),
+        .rst_n (rst_n_i),
+        .cs    (led_cs2),
+        .we    (gpio_we),
+        .be    (gpio_be),
+        .addr  (gpio_addr),
+        .wdata (gpio_wdata),
+        .rdata (led_rdata2),
+        .led   (led_data2)
+    );
+
+    seg7_cont seg7_ctrl_inst3 (
+        .clk   (clk),
+        .rst_n (rst_n_i),
+        .cs    (led_cs3),
+        .we    (gpio_we),
+        .be    (gpio_be),
+        .addr  (gpio_addr),
+        .wdata (gpio_wdata),
+        .rdata (led_rdata3),
+        .led   (led_data3)
+    );
+
+    assign led0 = led_data0;
+    assign led1 = led_data1;
+    assign led2 = led_data2;
+    assign led3 = led_data3;
+
+    assign led_rdata = (led_dev_idx == 2'd0) ? led_rdata0 :
+                       (led_dev_idx == 2'd1) ? led_rdata1 :
+                       (led_dev_idx == 2'd2) ? led_rdata2 :
+                                               led_rdata3;
 
     // -------------------------------------------------------------------------
     // CPU read-data mux
