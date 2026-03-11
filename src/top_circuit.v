@@ -105,7 +105,8 @@ module top_circuit #(
     // -------------------------------------------------------------------------
     // Address decode
     // -------------------------------------------------------------------------
-    wire hit_ram   = hit_mem_dram;
+    // Data-side memory hit includes DRAM and optional IMEM read window.
+    wire hit_mem   = hit_mem_dram || hit_mem_imem;
     wire hit_mmio  = (dmem_addr_byte >= MMIO_BASE_ADDR) && (dmem_addr_byte <= MMIO_END_ADDR);
     wire hit_uart  = hit_mmio && (dmem_addr_byte >= UART_BASE_ADDR) && (dmem_addr_byte <= UART_END_ADDR);
     wire hit_btn   = hit_mmio && (dmem_addr_byte >= BTN_BASE_ADDR)  && (dmem_addr_byte <= BTN_END_ADDR);
@@ -315,7 +316,7 @@ module top_circuit #(
     // -------------------------------------------------------------------------
     // CPU read-data mux
     // -------------------------------------------------------------------------
-    assign cpu_dmem_rdata = hit_ram  ? mem_rdata :
+    assign cpu_dmem_rdata = hit_mem  ? mem_rdata :
                             hit_uart ? uart_rdata :
                             hit_btn  ? btn_rdata :
                             hit_led  ? led_rdata :
