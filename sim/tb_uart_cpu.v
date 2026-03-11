@@ -56,11 +56,12 @@ module tb_uart_cpu;
     wire        uart_tx;
     wire        uart_irq;
     
-    // Internal MMIO signals
+    // Internal MMIO/memory signals
     wire        uart_cs;
-    wire        ram_cs;
     wire [31:0] uart_rdata;
-    wire [31:0] ram_rdata;
+    wire [31:0] mem_rdata;
+    wire        hit_imem;
+    wire        hit_dram;
     
     // Test control
     integer     i;
@@ -99,30 +100,25 @@ module tb_uart_cpu;
     );
     
     // =========================================================================
-    // Instruction Memory (IMEM): 4KB, loads hello_uart.hex
+    // Memory Controller: wraps IMEM + DRAM
     // =========================================================================
-    imem #(
-        .ADDR_WIDTH (10),                           // 1024 words = 4KB
-        .DATA_WIDTH (32),
-        .FILE_INIT  ("/home/ll06/info/cpu_sources/prog/hello_uart.hex")      // Load compiled program
-    ) imem_inst (
-        .addr       (imem_addr[11:2]),              // Word-aligned address
-        .dout       (imem_rdata)
-    );
-    
-    // =========================================================================
-    // Data RAM (DRAM): 4KB
-    // =========================================================================
-    dram #(
-        .ADDR_WIDTH (10),
-        .DATA_WIDTH (32)
-    ) dram_inst (
-        .clk        (clk),
-        .we         (dmem_we && ram_cs),
-        .byte_we    (dmem_be),
-        .addr       (dmem_addr[9:0]),               // CPU outputs word address already
-        .din        (dmem_wdata),
-        .dout       (ram_rdata)
+    mem_cont #(
+        .IMEM_ADDR_WIDTH (10),
+        .DMEM_ADDR_WIDTH (10),
+        .DATA_WIDTH      (32),
+        .IMEM_FILE_INIT  ("/home/ll06/info/cpu_sources/prog/hello_uart.hex")
+    ) mem_inst (
+        .clk            (clk),
+        .imem_addr      (imem_addr),
+        .imem_rdata     (imem_rdata),
+        .dmem_addr      (dmem_addr),
+        .dmem_wdata     (dmem_wdata),
+        .dmem_we        (dmem_we),
+        .dmem_be        (dmem_be),
+        .dmem_rdata     (mem_rdata),
+        .dmem_addr_byte (dmem_addr_byte),
+        .hit_imem       (hit_imem),
+        .hit_dram       (hit_dram)
     );
     
     // =========================================================================
@@ -151,14 +147,11 @@ module tb_uart_cpu;
     // =========================================================================
     // Address Decoder: RAM vs UART
     // =========================================================================
-    // CPU dmem_addr is word-addressed (byte_addr >> 2). Reconstruct byte address for MMIO decode.
-    assign dmem_addr_byte = {dmem_addr[29:0], 2'b00};
-
-    assign ram_cs  = (dmem_addr_byte < 32'h1000_0000);
+    // dmem_addr_byte is provided by mem_cont.
     assign uart_cs = (dmem_addr_byte >= UART_BASE && dmem_addr_byte < UART_BASE + 32'h100);
     
     // Data read mux
-    assign dmem_rdata = uart_cs ? uart_rdata : ram_rdata;
+    assign dmem_rdata = uart_cs ? uart_rdata : mem_rdata;
     
     // UART RX tied high (idle state, no input for this test)
     assign uart_rx = 1'b1;
@@ -232,11 +225,12 @@ module tb_uart_cpu;
         $display("BAUD_DIV=%0d BIT_TIME=%0d ns", BAUD_DIV, BIT_TIME);
         $display("========================================");
         $display("IMEM[0]=0x%08h IMEM[1]=0x%08h IMEM[2]=0x%08h IMEM[3]=0x%08h",
-                 imem_inst.mem[0], imem_inst.mem[1], imem_inst.mem[2], imem_inst.mem[3]);
-        if ((imem_inst.mem[0] == 32'h00000013) &&
-            (imem_inst.mem[1] == 32'h00000013) &&
-            (imem_inst.mem[2] == 32'h00000013) &&
-            (imem_inst.mem[3] == 32'h00000013)) begin
+                 mem_inst.imem_inst.mem[0], mem_inst.imem_inst.mem[1],
+                 mem_inst.imem_inst.mem[2], mem_inst.imem_inst.mem[3]);
+        if ((mem_inst.imem_inst.mem[0] == 32'h00000013) &&
+            (mem_inst.imem_inst.mem[1] == 32'h00000013) &&
+            (mem_inst.imem_inst.mem[2] == 32'h00000013) &&
+            (mem_inst.imem_inst.mem[3] == 32'h00000013)) begin
             $display("[FAIL] IMEM appears to be all NOPs. hello_uart.hex was not loaded.");
             $display("[HINT] In Vivado, add hello_uart.hex to Simulation Sources or use absolute FILE_INIT path.");
             $finish;

@@ -21,29 +21,36 @@ SECTIONS
 {
     /* Code section starts at address 0 */
     .text : {
+        __text_start = .;
         *(.text._start)
         *(.text*)
         . = ALIGN(4);
+        __text_end = .;
     } > IMEM
 
     /* Read-only data */
     .rodata : {
+        __rodata_start = .;
         *(.rodata*)
         . = ALIGN(4);
+        __rodata_end = .;
     } > IMEM
 
     /* Initialized data */
     .data : {
+        . = ALIGN(4);
         __data_load_start = LOADADDR(.data);
         __data_start = .;
         *(.data*)
         *(.sdata*)
         . = ALIGN(4);
         __data_end = .;
+        __data_load_end = __data_load_start + SIZEOF(.data);
     } > DRAM AT > IMEM
 
     /* Uninitialized data */
     .bss : {
+        . = ALIGN(4);
         __bss_start = .;
         *(.bss*)
         *(.sbss*)

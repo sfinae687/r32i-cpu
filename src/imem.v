@@ -25,7 +25,9 @@ module imem #(
     parameter FILE_INIT = ""          // If specified, load instructions from this binary file
 )(
     input  wire [ADDR_WIDTH-1:0] addr,
-    output wire [DATA_WIDTH-1:0] dout
+    output wire [DATA_WIDTH-1:0] dout,
+    input  wire [ADDR_WIDTH-1:0] addr_b,
+    output wire [DATA_WIDTH-1:0] dout_b
 );
 
     localparam [31:0] RV32I_NOP = 32'h00000013;
@@ -65,7 +67,11 @@ module imem #(
         end
     endtask
 
-    // Asynchronous read for single-cycle CPU fetch.
+    // Dual asynchronous read ports:
+    // - addr/dout    : instruction fetch path
+    // - addr_b/dout_b: secondary read path (e.g., data-side ROM access)
+    // If addr_b is left floating in legacy benches, return NOP on port B.
     assign dout = mem[addr];
+    assign dout_b = (^addr_b === 1'bx) ? RV32I_NOP : mem[addr_b];
 
 endmodule

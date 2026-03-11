@@ -2,8 +2,8 @@
 # hello_uart.s - UART Test Program for RV32I CPU
 #
 # NOTE:
-#   This CPU uses separate IMEM/DMEM interfaces (Harvard style). To avoid
-#   reading constants from IMEM via DMEM, this test sends immediate bytes.
+#   Message bytes are stored in a normal read-only section (.rodata).
+#   The program sends the string by loading one byte at a time.
 ################################################################################
 
     .section .text._start
@@ -17,32 +17,16 @@ _start:
     lui t0, 0x10000
 
 main_loop:
-    addi a0, zero, 'H'
+    la   t1, hello_msg
+
+send_loop:
+    lbu  a0, 0(t1)
+    beq  a0, zero, send_done
     jal  ra, uart_putc
-    addi a0, zero, 'e'
-    jal  ra, uart_putc
-    addi a0, zero, 'l'
-    jal  ra, uart_putc
-    addi a0, zero, 'l'
-    jal  ra, uart_putc
-    addi a0, zero, 'o'
-    jal  ra, uart_putc
-    addi a0, zero, ','
-    jal  ra, uart_putc
-    addi a0, zero, ' '
-    jal  ra, uart_putc
-    addi a0, zero, 'U'
-    jal  ra, uart_putc
-    addi a0, zero, 'A'
-    jal  ra, uart_putc
-    addi a0, zero, 'R'
-    jal  ra, uart_putc
-    addi a0, zero, 'T'
-    jal  ra, uart_putc
-    addi a0, zero, '?'
-    jal  ra, uart_putc
-    addi a0, zero, 10
-    jal  ra, uart_putc
+    addi t1, t1, 1
+    j    send_loop
+
+send_done:
 
     # Small delay before next line
     lui t3, 0x00001
@@ -58,5 +42,9 @@ wait_tx_ready:
     beq  t2, zero, wait_tx_ready
     sb   a0, 0(t0)           # UART_TXDATA
     jalr zero, 0(ra)
+
+    .section .rodata
+hello_msg:
+    .asciz "Hello, UART!\n"
 
     .end
