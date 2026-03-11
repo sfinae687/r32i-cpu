@@ -128,6 +128,10 @@ module top_circuit(
     wire [31:0] uart_rdata;
     wire [31:0] btn_rdata;
     wire [31:0] led_rdata;
+    wire [31:0] btn_rdata0;
+    wire [31:0] btn_rdata1;
+    wire [31:0] btn_rdata2;
+    wire [31:0] btn_rdata3;
 
     // -------------------------------------------------------------------------
     // Core + memory/peripheral instances
@@ -176,18 +180,20 @@ module top_circuit(
     );
 
     // -------------------------------------------------------------------------
-    // GPIO MMIO reservation (controllers intentionally not implemented)
+    // GPIO MMIO controllers
     // -------------------------------------------------------------------------
-    // NOTE:
-    //   btn_cont / led_cont are intentionally NOT implemented in this revision.
-    //   Only address-map and bus hookup points are kept, so runtime.h mapping
-    //   remains stable and can be connected later without changing CPU side.
+    // Buttons are implemented as one controller per runtime device.
+    // LEDs remain placeholder outputs until led_cont is added.
     wire        btn_cs = hit_btn;
     wire        led_cs = hit_led;
     wire        gpio_we = dmem_we;
     wire [3:0]  gpio_be = dmem_be;
     wire [31:0] gpio_addr = dmem_addr_byte;
     wire [31:0] gpio_wdata = dmem_wdata;
+    wire        btn_cs0 = btn_cs && (btn_dev_idx == 2'd0);
+    wire        btn_cs1 = btn_cs && (btn_dev_idx == 2'd1);
+    wire        btn_cs2 = btn_cs && (btn_dev_idx == 2'd2);
+    wire        btn_cs3 = btn_cs && (btn_dev_idx == 2'd3);
 
     // Placeholder behavior until dedicated LED controller is added at this location.
     assign led0 = 32'h0000_0000;
@@ -195,29 +201,62 @@ module top_circuit(
     assign led2 = 32'h0000_0000;
     assign led3 = 32'h0000_0000;
 
-    // Placeholder readback values until dedicated GPIO controllers are added here.
-    // Kept as fixed zero to avoid side effects before real controllers are connected.
-    assign btn_rdata = 32'h0000_0000;
+    btn_cont btn_ctrl_inst0 (
+        .clk   (clk),
+        .rst_n (rst_n_i),
+        .cs    (btn_cs0),
+        .we    (gpio_we),
+        .be    (gpio_be),
+        .addr  (gpio_addr),
+        .wdata (gpio_wdata),
+        .rdata (btn_rdata0),
+        .btn   (btn0)
+    );
+
+    btn_cont btn_ctrl_inst1 (
+        .clk   (clk),
+        .rst_n (rst_n_i),
+        .cs    (btn_cs1),
+        .we    (gpio_we),
+        .be    (gpio_be),
+        .addr  (gpio_addr),
+        .wdata (gpio_wdata),
+        .rdata (btn_rdata1),
+        .btn   (btn1)
+    );
+
+    btn_cont btn_ctrl_inst2 (
+        .clk   (clk),
+        .rst_n (rst_n_i),
+        .cs    (btn_cs2),
+        .we    (gpio_we),
+        .be    (gpio_be),
+        .addr  (gpio_addr),
+        .wdata (gpio_wdata),
+        .rdata (btn_rdata2),
+        .btn   (btn2)
+    );
+
+    btn_cont btn_ctrl_inst3 (
+        .clk   (clk),
+        .rst_n (rst_n_i),
+        .cs    (btn_cs3),
+        .we    (gpio_we),
+        .be    (gpio_be),
+        .addr  (gpio_addr),
+        .wdata (gpio_wdata),
+        .rdata (btn_rdata3),
+        .btn   (btn3)
+    );
+
+    assign btn_rdata = (btn_dev_idx == 2'd0) ? btn_rdata0 :
+                       (btn_dev_idx == 2'd1) ? btn_rdata1 :
+                       (btn_dev_idx == 2'd2) ? btn_rdata2 :
+                                               btn_rdata3;
+
     assign led_rdata = 32'h0000_0000;
 
     // ---------------- GPIO controller placement template ----------------
-    // btn_cont btn_ctrl_inst (
-    //     .clk   (clk),
-    //     .rst_n (rst_n_i),
-    //     .cs    (btn_cs),
-    //     .we    (gpio_we),
-    //     .be    (gpio_be),
-    //     .addr  (gpio_addr),
-    //     .wdata (gpio_wdata),
-    //     .rdata (btn_rdata),
-    //     // addr decode usage example:
-    //     // .dev_idx(btn_dev_idx), .reg_off(btn_reg_off)
-    //     .btn0  (btn0),
-    //     .btn1  (btn1),
-    //     .btn2  (btn2),
-    //     .btn3  (btn3)
-    // );
-    //
     // led_cont led_ctrl_inst (
     //     .clk   (clk),
     //     .rst_n (rst_n_i),
