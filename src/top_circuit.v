@@ -20,7 +20,10 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module top_circuit(
+module top_circuit #(
+    // Default program image for IMEM. Keep empty to preserve previous behavior.
+    parameter [1023:0] IMEM_FILE_INIT = ""
+)(
     input  wire        clk,
     input  wire        rst_n,
 
@@ -94,22 +97,15 @@ module top_circuit(
     localparam [31:0] LED_BASE_ADDR   = 32'h1000_0200;
     localparam [31:0] LED_END_ADDR    = 32'h1000_023F;
 
-    // CPU dmem_addr uses word addressing; reconstruct aligned byte address for decoding/MMIO.
-    wire [31:0] dmem_addr_byte = {dmem_addr, 2'b00};
-    wire [31:0] RAM_BASE_WORD  = RAM_BASE_ADDR[31:2];
-    wire [31:0] dmem_ram_word_addr = dmem_addr - RAM_BASE_WORD;
-
-    // Per-device register offsets (runtime.h)
-    localparam [3:0] BTN_REG_DATA_OFF = 4'h0;
-    localparam [3:0] BTN_REG_EDGE_OFF = 4'h4;
-    localparam [3:0] LED_REG_DATA_OFF = 4'h0;
-    localparam [3:0] LED_REG_SET_OFF  = 4'h4;
-    localparam [3:0] LED_REG_CLR_OFF  = 4'h8;
+    // Memory controller outputs
+    wire [31:0] dmem_addr_byte;
+    wire        hit_mem_imem;
+    wire        hit_mem_dram;
 
     // -------------------------------------------------------------------------
     // Address decode
     // -------------------------------------------------------------------------
-    wire hit_ram   = (dmem_addr_byte >= RAM_BASE_ADDR)  && (dmem_addr_byte <= RAM_END_ADDR);
+    wire hit_ram   = hit_mem_dram;
     wire hit_mmio  = (dmem_addr_byte >= MMIO_BASE_ADDR) && (dmem_addr_byte <= MMIO_END_ADDR);
     wire hit_uart  = hit_mmio && (dmem_addr_byte >= UART_BASE_ADDR) && (dmem_addr_byte <= UART_END_ADDR);
     wire hit_btn   = hit_mmio && (dmem_addr_byte >= BTN_BASE_ADDR)  && (dmem_addr_byte <= BTN_END_ADDR);
@@ -118,13 +114,10 @@ module top_circuit(
     // runtime.h stride convention: dev index in addr[5:4], reg offset in addr[3:0]
     wire [1:0] btn_dev_idx = dmem_addr_byte[5:4];
     wire [1:0] led_dev_idx = dmem_addr_byte[5:4];
-    wire [3:0] btn_reg_off = dmem_addr_byte[3:0];
-    wire [3:0] led_reg_off = dmem_addr_byte[3:0];
-
     // -------------------------------------------------------------------------
     // Memory return buses from each target
     // -------------------------------------------------------------------------
-    wire [31:0] ram_rdata;
+    wire [31:0] mem_rdata;
     wire [31:0] uart_rdata;
     wire [31:0] btn_rdata;
     wire [31:0] led_rdata;
@@ -156,21 +149,23 @@ module top_circuit(
         .dmem_be (dmem_be)
     );
 
-    imem imem_inst(
-        .addr (imem_addr[11:2]),  // Convert byte address to word address (10-bit index)
-        .dout (imem_rdata)
-    );
-
-    dram #(
-        .ADDR_WIDTH (10),
-        .DATA_WIDTH (32)
-    ) dmem_inst(
+    mem_cont #(
+        .IMEM_ADDR_WIDTH (10),
+        .DMEM_ADDR_WIDTH (10),
+        .DATA_WIDTH      (32),
+        .IMEM_FILE_INIT  (IMEM_FILE_INIT)
+    ) mem_ctrl_inst(
         .clk (clk),
-        .we (dmem_we && hit_ram),
-        .byte_we (dmem_be),
-        .addr (dmem_ram_word_addr[9:0]),
-        .din (dmem_wdata),
-        .dout (ram_rdata)
+        .imem_addr      (imem_addr),
+        .imem_rdata     (imem_rdata),
+        .dmem_addr      (dmem_addr),
+        .dmem_wdata     (dmem_wdata),
+        .dmem_we        (dmem_we),
+        .dmem_be        (dmem_be),
+        .dmem_rdata     (mem_rdata),
+        .dmem_addr_byte (dmem_addr_byte),
+        .hit_imem       (hit_mem_imem),
+        .hit_dram       (hit_mem_dram)
     );
 
     uart_cont uart_inst(
@@ -320,10 +315,24 @@ module top_circuit(
     // -------------------------------------------------------------------------
     // CPU read-data mux
     // -------------------------------------------------------------------------
-    assign cpu_dmem_rdata = hit_ram  ? ram_rdata :
+    assign cpu_dmem_rdata = hit_ram  ? mem_rdata :
                             hit_uart ? uart_rdata :
                             hit_btn  ? btn_rdata :
                             hit_led  ? led_rdata :
                             32'h0000_0000;
+
+`ifndef SYNTHESIS
+    // Simulation-only override:
+    //   +PROG=/abs/path/to/program.hex
+    // This allows loading a custom program file without editing the testbench.
+    reg [1023:0] sim_prog_file;
+    initial begin
+        if ($value$plusargs("PROG=%s", sim_prog_file)) begin
+            mem_ctrl_inst.imem_inst.clear_to_nop();
+            $readmemh(sim_prog_file, mem_ctrl_inst.imem_inst.mem);
+            $display("[top_circuit] Loaded IMEM from +PROG=%0s", sim_prog_file);
+        end
+    end
+`endif
     
 endmodule
