@@ -7,11 +7,11 @@
  * Memory map planning for the RV32I single-cycle system.
  *
  * Address space split:
- *   0x0000_0000 - 0x0000_0FFF : Data RAM (4KB, existing dram)
+ *   0x0000_1000 - 0x0000_1FFF : Data RAM (4KB, existing dram)
  *   0x1000_0000 - 0x1000_0FFF : MMIO region (new peripherals)
  */
 
-#define RAM_BASE_ADDR        0x00000000u
+#define RAM_BASE_ADDR        0x00001000u
 #define RAM_SIZE_BYTES       0x00001000u
 
 #define MMIO_BASE_ADDR       0x10000000u
@@ -51,6 +51,7 @@
 
 #include "buttons.h"
 #include "seg7.h"
+#include "uart.h"
 
 extern void init(void);
 extern void always(void);

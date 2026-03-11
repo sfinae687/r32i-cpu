@@ -10,8 +10,8 @@
     .global _start
 
 _start:
-    # Stack top (4KB RAM)
-    lui sp, 0x00001
+    # Stack top (DRAM 0x00001000-0x00001FFF)
+    lui sp, 0x00002
 
     # UART base: 0x10000000
     lui t0, 0x10000

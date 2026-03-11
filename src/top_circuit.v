@@ -74,7 +74,7 @@ module top_circuit(
     // -------------------------------------------------------------------------
     // Address map (must match prog/runtime.h)
     // -------------------------------------------------------------------------
-    localparam [31:0] RAM_BASE_ADDR   = 32'h0000_0000;
+    localparam [31:0] RAM_BASE_ADDR   = 32'h0000_1000;
     localparam [31:0] RAM_SIZE_BYTES  = 32'h0000_1000;
     localparam [31:0] RAM_END_ADDR    = RAM_BASE_ADDR + RAM_SIZE_BYTES - 1;
 
@@ -94,6 +94,11 @@ module top_circuit(
     localparam [31:0] LED_BASE_ADDR   = 32'h1000_0200;
     localparam [31:0] LED_END_ADDR    = 32'h1000_023F;
 
+    // CPU dmem_addr uses word addressing; reconstruct aligned byte address for decoding/MMIO.
+    wire [31:0] dmem_addr_byte = {dmem_addr, 2'b00};
+    wire [31:0] RAM_BASE_WORD  = RAM_BASE_ADDR[31:2];
+    wire [31:0] dmem_ram_word_addr = dmem_addr - RAM_BASE_WORD;
+
     // Per-device register offsets (runtime.h)
     localparam [3:0] BTN_REG_DATA_OFF = 4'h0;
     localparam [3:0] BTN_REG_EDGE_OFF = 4'h4;
@@ -104,17 +109,17 @@ module top_circuit(
     // -------------------------------------------------------------------------
     // Address decode
     // -------------------------------------------------------------------------
-    wire hit_ram   = (dmem_addr >= RAM_BASE_ADDR)  && (dmem_addr <= RAM_END_ADDR);
-    wire hit_mmio  = (dmem_addr >= MMIO_BASE_ADDR) && (dmem_addr <= MMIO_END_ADDR);
-    wire hit_uart  = hit_mmio && (dmem_addr >= UART_BASE_ADDR) && (dmem_addr <= UART_END_ADDR);
-    wire hit_btn   = hit_mmio && (dmem_addr >= BTN_BASE_ADDR)  && (dmem_addr <= BTN_END_ADDR);
-    wire hit_led   = hit_mmio && (dmem_addr >= LED_BASE_ADDR)  && (dmem_addr <= LED_END_ADDR);
+    wire hit_ram   = (dmem_addr_byte >= RAM_BASE_ADDR)  && (dmem_addr_byte <= RAM_END_ADDR);
+    wire hit_mmio  = (dmem_addr_byte >= MMIO_BASE_ADDR) && (dmem_addr_byte <= MMIO_END_ADDR);
+    wire hit_uart  = hit_mmio && (dmem_addr_byte >= UART_BASE_ADDR) && (dmem_addr_byte <= UART_END_ADDR);
+    wire hit_btn   = hit_mmio && (dmem_addr_byte >= BTN_BASE_ADDR)  && (dmem_addr_byte <= BTN_END_ADDR);
+    wire hit_led   = hit_mmio && (dmem_addr_byte >= LED_BASE_ADDR)  && (dmem_addr_byte <= LED_END_ADDR);
 
     // runtime.h stride convention: dev index in addr[5:4], reg offset in addr[3:0]
-    wire [1:0] btn_dev_idx = dmem_addr[5:4];
-    wire [1:0] led_dev_idx = dmem_addr[5:4];
-    wire [3:0] btn_reg_off = dmem_addr[3:0];
-    wire [3:0] led_reg_off = dmem_addr[3:0];
+    wire [1:0] btn_dev_idx = dmem_addr_byte[5:4];
+    wire [1:0] led_dev_idx = dmem_addr_byte[5:4];
+    wire [3:0] btn_reg_off = dmem_addr_byte[3:0];
+    wire [3:0] led_reg_off = dmem_addr_byte[3:0];
 
     // -------------------------------------------------------------------------
     // Memory return buses from each target
@@ -151,7 +156,7 @@ module top_circuit(
         .clk (clk),
         .we (dmem_we && hit_ram),
         .byte_we (dmem_be),
-        .addr (dmem_addr[11:2]),  // Convert byte address to word address
+        .addr (dmem_ram_word_addr[9:0]),
         .din (dmem_wdata),
         .dout (ram_rdata)
     );
@@ -162,7 +167,7 @@ module top_circuit(
         .cs      (hit_uart),
         .we      (dmem_we),
         .be      (dmem_be),
-        .addr    (dmem_addr),
+        .addr    (dmem_addr_byte),
         .wdata   (dmem_wdata),
         .rdata   (uart_rdata),
         .uart_rx (uart_rx_i),
@@ -181,7 +186,7 @@ module top_circuit(
     wire        led_cs = hit_led;
     wire        gpio_we = dmem_we;
     wire [3:0]  gpio_be = dmem_be;
-    wire [31:0] gpio_addr = dmem_addr;
+    wire [31:0] gpio_addr = dmem_addr_byte;
     wire [31:0] gpio_wdata = dmem_wdata;
 
     // Placeholder behavior until dedicated LED controller is added at this location.
