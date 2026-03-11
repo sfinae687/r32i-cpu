@@ -2,3 +2,5 @@
 *.dump
 *.hex
 *.elf
+build/
+*.vcd

@@ -17,9 +17,6 @@ cpu_sources/
 ├── src/              Verilog RTL 源码
 ├── sim/              仿真 testbench、脚本和说明文档
 ├── prog/             RISC-V 程序、运行时、编译脚本
-├── build/            构建产物目录
-├── simv              已编译的 Icarus 仿真可执行文件
-└── tb_top.vcd        示例波形输出
 ```
 
 ### 1.1 RTL 目录
@@ -55,6 +52,8 @@ cpu_sources/
 - 整机级 testbench
 	- `tb_top.v`：最常用的整机仿真入口，支持加载程序、UART 交互、按钮输入、LED/数码管观察、脚本驱动
 
+模块级 testbench 可能硬编码了程序路径，在使用时请按需修改。
+
 此外还有脚本和配套说明：
 
 - `tiggle_led.script`：按钮 + 数码管示例脚本
@@ -62,6 +61,8 @@ cpu_sources/
 - `seg7_demo.script`：七段数码管演示脚本
 - `SEG7_TESTBENCH_GUIDE.md`：七段数码管测试完整说明
 - `SEG7_QUICK_REFERENCE.md`：七段数码管命令速查
+
+脚本的完整参考文档参见 `sim/tb_top.v` 的相关注释或 [脚本参考](#6-脚本驱动仿真)。
 
 ### 1.3 程序目录
 
@@ -209,17 +210,6 @@ cd prog
 	- 检测按钮边沿
 	- 每次按键事件发生时计数加一
 	- 使用 `seg7_show_u32()` 将计数显示到四个七段数码管上
-
-### 4.3 预编译产物
-
-仓库中已经有部分产物可直接用于仿真，例如：
-
-- `prog/hello_uart.dump`
-- `prog/tiggle_led.dump`
-- `prog/uart_echo.dump`
-- `prog/test/framework/hello_cpu.dump`
-
-如果缺少对应 `.hex`，建议重新运行编译脚本生成，避免文档和实际产物脱节。
 
 ## 5. 如何运行整机仿真
 
@@ -436,6 +426,8 @@ vvp simv +PROG=prog/hello_cpu.hex +TIMEOUT=200000 +VCD=hello_cpu.vcd
 	- `riscv32-unknown-elf-gcc`
 	- `riscv64-unknown-elf-gcc`
 	- `riscv64-linux-gnu-gcc`
+
+Verilog 工具链也可以使用Vivado。
 
 ## 11. 备注
 
