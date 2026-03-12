@@ -73,6 +73,23 @@ module tb_rv32i_alu;
     integer error_count = 0;
     integer i;
 
+    // Unified register checker for concise pass/fail reporting
+    task check_reg;
+        input [4:0] reg_idx;
+        input [31:0] expected;
+        input [255:0] desc;
+        reg [31:0] actual;
+        begin
+            actual = dut.cpu_inst.regs.regs[reg_idx];
+            if (actual !== expected) begin
+                error_count = error_count + 1;
+                $display("[FAIL] x%0d = 0x%08h, expected 0x%08h (%0s)", reg_idx, actual, expected, desc);
+            end else begin
+                $display("[PASS] x%0d = 0x%08h (%0s)", reg_idx, actual, desc);
+            end
+        end
+    endtask
+
     task load_default_alu_program;
         begin
             dut.mem_ctrl_inst.imem_inst.clear_to_nop();
@@ -208,22 +225,38 @@ module tb_rv32i_alu;
         end
         
         // ============== Test Phase 3: Register Verification ==============
-        $display("\n========== Test Phase 3: Register File State ==========");
-        $display("Register | Final Value | Expected Value");
-        $display("----------|-------------|-------------------");
-        $display("x0       | 0x%08h  | 0x00000000 (always zero)", dut.cpu_inst.regs.regs[0]);
-        $display("x1       | 0x%08h  | 0x00000005 (ADDI x1,x0,5)", dut.cpu_inst.regs.regs[1]);
-        $display("x2       | 0x%08h  | 0x00000003 (ADDI x2,x0,3)", dut.cpu_inst.regs.regs[2]);
-        $display("x3       | 0x%08h  | 0x00000008 (ADD x3,x1,x2=5+3)", dut.cpu_inst.regs.regs[3]);
-        $display("x4       | 0x%08h  | 0x00000005 (SUB x4,x3,x2=8-3)", dut.cpu_inst.regs.regs[4]);
-        $display("x5       | 0x%08h  | 0x00000000 (AND x5,x3,x2=8&3)", dut.cpu_inst.regs.regs[5]);
-        $display("x6       | 0x%08h  | 0x0000000b (OR x6,x3,x2=8|3)", dut.cpu_inst.regs.regs[6]);
-        $display("x7       | 0x%08h  | 0x0000000b (XOR x7,x3,x2=8^3)", dut.cpu_inst.regs.regs[7]);
-        $display("x8       | 0x%08h  | 0x00000000 (ANDI x8,x3,7=8&7)", dut.cpu_inst.regs.regs[8]);
+        $display("\n========== Test Phase 3: Register File Check ==========");
+        error_count = 0;
+        check_reg(5'd0,  32'h00000000, "x0 is hard-wired to zero");
+        check_reg(5'd1,  32'h00000005, "ADDI x1, x0, 5");
+        check_reg(5'd2,  32'h00000003, "ADDI x2, x0, 3");
+        check_reg(5'd3,  32'h00000008, "ADD  x3, x1, x2");
+        check_reg(5'd4,  32'h00000005, "SUB  x4, x3, x2");
+        check_reg(5'd5,  32'h00000000, "AND  x5, x3, x2");
+        check_reg(5'd6,  32'h0000000b, "OR   x6, x3, x2");
+        check_reg(5'd7,  32'h0000000b, "XOR  x7, x3, x2");
+        check_reg(5'd8,  32'h00000000, "ANDI x8, x3, 7");
+        check_reg(5'd9,  32'h0000000f, "ORI  x9, x3, 15");
+        check_reg(5'd10, 32'h0000000b, "XORI x10, x3, 3");
+        check_reg(5'd11, 32'h00000028, "SLL  x11, x1, x2");
+        check_reg(5'd12, 32'h00000001, "SRL  x12, x3, x2");
+        check_reg(5'd13, 32'h00000001, "SRA  x13, x3, x2");
+        check_reg(5'd14, 32'h00000014, "SLLI x14, x1, 2");
+        check_reg(5'd15, 32'h00000004, "SRLI x15, x3, 1");
+        check_reg(5'd16, 32'h00000004, "SRAI x16, x3, 1");
+        check_reg(5'd17, 32'h00000000, "SLT  x17, x1, x2");
+        check_reg(5'd18, 32'h00000001, "SLTI x18, x3, 10");
+        check_reg(5'd19, 32'h00000000, "SLTU x19, x1, x2");
+        check_reg(5'd20, 32'h00000001, "SLTIU x20, x3, 10");
         
         // ============== Simulation Complete ==============
         $display("\n========== Simulation Complete ==========");
         $display("Total cycles: %d", cycle_count);
+        if (error_count == 0) begin
+            $display("ALU instruction test result: PASS");
+        end else begin
+            $display("ALU instruction test result: FAIL (%0d mismatches)", error_count);
+        end
         
         #100;
         $stop();
