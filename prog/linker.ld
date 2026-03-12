@@ -2,8 +2,8 @@
  * Linker script for RV32I single-cycle CPU
  * 
  * Memory layout:
- *   IMEM: 0x00000000 - 0x00000FFF (4KB instruction memory)
- *   DRAM: 0x00001000 - 0x00001FFF (4KB data RAM, non-overlapping with IMEM)
+ *   IMEM: 0x00000000 - 0x00001FFF (8KB instruction memory)
+ *   DRAM: 0x00002000 - 0x00003FFF (8KB data RAM, non-overlapping with IMEM)
  *   MMIO: 0x10000000 - 0x10000FFF (4KB MMIO region for peripherals)
  ******************************************************************************/
 
@@ -12,8 +12,8 @@ ENTRY(_start)
 
 MEMORY
 {
-    IMEM (rx)  : ORIGIN = 0x00000000, LENGTH = 4K
-    DRAM (rwx) : ORIGIN = 0x00001000, LENGTH = 4K
+    IMEM (rx)  : ORIGIN = 0x00000000, LENGTH = 8K
+    DRAM (rwx) : ORIGIN = 0x00002000, LENGTH = 8K
     MMIO (rw)  : ORIGIN = 0x10000000, LENGTH = 4K
 }
 

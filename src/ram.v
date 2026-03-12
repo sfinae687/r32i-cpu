@@ -20,7 +20,7 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 module dram #(
-    parameter ADDR_WIDTH = 10,       // 1024个字 (4KB)
+    parameter ADDR_WIDTH = 11,       // 2048个字 (8KB)
     parameter DATA_WIDTH = 32
 )(
     input  wire                   clk,

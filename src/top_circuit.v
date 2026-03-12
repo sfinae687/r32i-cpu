@@ -30,7 +30,6 @@ module top_circuit #(
     // UART external pins
     input  wire        uart_rx,
     output wire        uart_tx,
-    output wire        uart_irq,
 
     // GPIO external pin interface (directly connected to board pins)
     // 4x button devices (each 32-bit bitmap)
@@ -77,8 +76,8 @@ module top_circuit #(
     // -------------------------------------------------------------------------
     // Address map (must match prog/runtime.h)
     // -------------------------------------------------------------------------
-    localparam [31:0] RAM_BASE_ADDR   = 32'h0000_1000;
-    localparam [31:0] RAM_SIZE_BYTES  = 32'h0000_1000;
+    localparam [31:0] RAM_BASE_ADDR   = 32'h0000_2000;
+    localparam [31:0] RAM_SIZE_BYTES  = 32'h0000_2000;
     localparam [31:0] RAM_END_ADDR    = RAM_BASE_ADDR + RAM_SIZE_BYTES - 1;
 
     localparam [31:0] MMIO_BASE_ADDR  = 32'h1000_0000;
@@ -151,8 +150,8 @@ module top_circuit #(
     );
 
     mem_cont #(
-        .IMEM_ADDR_WIDTH (10),
-        .DMEM_ADDR_WIDTH (10),
+        .IMEM_ADDR_WIDTH (11),
+        .DMEM_ADDR_WIDTH (11),
         .DATA_WIDTH      (32),
         .IMEM_FILE_INIT  (IMEM_FILE_INIT)
     ) mem_ctrl_inst(

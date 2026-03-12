@@ -103,8 +103,8 @@ module tb_uart_cpu;
     // Memory Controller: wraps IMEM + DRAM
     // =========================================================================
     mem_cont #(
-        .IMEM_ADDR_WIDTH (10),
-        .DMEM_ADDR_WIDTH (10),
+        .IMEM_ADDR_WIDTH (11),
+        .DMEM_ADDR_WIDTH (11),
         .DATA_WIDTH      (32),
         .IMEM_FILE_INIT  ("/home/ll06/info/cpu_sources/prog/hello_uart.hex")
     ) mem_inst (

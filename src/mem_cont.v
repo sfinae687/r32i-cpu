@@ -8,13 +8,13 @@
 // - Provide optional data-side read-only IMEM window (for constants in ROM)
 //
 // Address map (byte address):
-// - IMEM: 0x0000_0000 ~ 0x0000_0FFF (read-only, both fetch + data-read window)
-// - DRAM: 0x0000_1000 ~ 0x0000_1FFF (read/write)
+// - IMEM: 0x0000_0000 ~ 0x0000_1FFF (read-only, both fetch + data-read window)
+// - DRAM: 0x0000_2000 ~ 0x0000_3FFF (read/write)
 //////////////////////////////////////////////////////////////////////////////////
 
 module mem_cont #(
-    parameter IMEM_ADDR_WIDTH = 10,
-    parameter DMEM_ADDR_WIDTH = 10,
+    parameter IMEM_ADDR_WIDTH = 11,
+    parameter DMEM_ADDR_WIDTH = 11,
     parameter DATA_WIDTH      = 32,
     parameter IMEM_FILE_INIT  = ""
 )(
@@ -38,11 +38,11 @@ module mem_cont #(
 );
 
     localparam [31:0] IMEM_BASE_ADDR = 32'h0000_0000;
-    localparam [31:0] IMEM_SIZE_BYTES = 32'h0000_1000;
+    localparam [31:0] IMEM_SIZE_BYTES = 32'h0000_2000;
     localparam [31:0] IMEM_END_ADDR  = IMEM_BASE_ADDR + IMEM_SIZE_BYTES - 1;
 
-    localparam [31:0] DRAM_BASE_ADDR = 32'h0000_1000;
-    localparam [31:0] DRAM_SIZE_BYTES = 32'h0000_1000;
+    localparam [31:0] DRAM_BASE_ADDR = 32'h0000_2000;
+    localparam [31:0] DRAM_SIZE_BYTES = 32'h0000_2000;
     localparam [31:0] DRAM_END_ADDR  = DRAM_BASE_ADDR + DRAM_SIZE_BYTES - 1;
 
     // CPU dmem_addr is word-addressed; rebuild aligned byte address.

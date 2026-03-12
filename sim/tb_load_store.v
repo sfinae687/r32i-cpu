@@ -34,13 +34,13 @@ module tb_load_store();
     
     // Data RAM Instance
     dram #(
-        .ADDR_WIDTH(10),
+        .ADDR_WIDTH(11),
         .DATA_WIDTH(32)
     ) data_ram (
         .clk(clk),
         .we(dmem_we),
         .byte_we(dmem_be),
-        .addr(dmem_addr[9:0]),
+        .addr(dmem_addr[10:0]),
         .din(dmem_wdata),
         .dout(dmem_rdata)
     );

@@ -20,7 +20,7 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 module imem #(
-    parameter ADDR_WIDTH = 10,
+    parameter ADDR_WIDTH = 11,
     parameter DATA_WIDTH = 32,
     parameter FILE_INIT = ""          // If specified, load instructions from this binary file
 )(

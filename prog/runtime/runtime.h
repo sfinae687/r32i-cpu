@@ -7,12 +7,12 @@
  * Memory map planning for the RV32I single-cycle system.
  *
  * Address space split:
- *   0x0000_1000 - 0x0000_1FFF : Data RAM (4KB, existing dram)
+ *   0x0000_2000 - 0x0000_3FFF : Data RAM (8KB, existing dram)
  *   0x1000_0000 - 0x1000_0FFF : MMIO region (new peripherals)
  */
 
-#define RAM_BASE_ADDR        0x00001000u
-#define RAM_SIZE_BYTES       0x00001000u
+#define RAM_BASE_ADDR        0x00002000u
+#define RAM_SIZE_BYTES       0x00002000u
 
 #define MMIO_BASE_ADDR       0x10000000u
 #define MMIO_SIZE_BYTES      0x00001000u

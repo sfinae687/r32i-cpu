@@ -62,23 +62,23 @@ module tb_uart_cpu_rx;
 
     // Program: uart_echo.hex
     imem #(
-        .ADDR_WIDTH (10),
+        .ADDR_WIDTH (11),
         .DATA_WIDTH (32),
         .FILE_INIT  ("/home/ll06/info/cpu_sources/prog/uart_echo.hex")
     ) imem_inst (
-        .addr       (imem_addr[11:2]),
+        .addr       (imem_addr[12:2]),
         .dout       (imem_rdata)
     );
 
     // DRAM
     dram #(
-        .ADDR_WIDTH (10),
+        .ADDR_WIDTH (11),
         .DATA_WIDTH (32)
     ) dram_inst (
         .clk        (clk),
         .we         (dmem_we && ram_cs),
         .byte_we    (dmem_be),
-        .addr       (dmem_addr[9:0]),
+        .addr       (dmem_addr[10:0]),
         .din        (dmem_wdata),
         .dout       (ram_rdata)
     );
