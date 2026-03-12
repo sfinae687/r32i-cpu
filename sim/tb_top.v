@@ -609,8 +609,9 @@ module tb_top;
         input [1023:0] fname;
         integer        fd;
         integer        r;
-        string         line;
-        string         cmd;
+        // Use packed byte arrays instead of SystemVerilog string for Vivado Verilog mode.
+        reg [8*256-1:0] line;
+        reg [8*32-1:0]  cmd;
         integer        a, b, c_int;
         reg [31:0]     val, val2;
         reg [7:0]      rx_byte;
@@ -621,12 +622,12 @@ module tb_top;
             end else begin
                 $display("[SCRIPT] Running '%0s'", fname);
                 while (!$feof(fd)) begin
-                    line = "";
+                    line = {8*256{1'b0}};
                     r    = $fgets(line, fd);
                     if (r == 0) begin
                         // EOF or empty read
                     end else begin
-                        cmd = "";
+                        cmd = {8*32{1'b0}};
                         r   = $sscanf(line, " %s", cmd);
                         if (r < 1) begin
                             // blank line — skip
