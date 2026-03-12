@@ -1,2 +1,5 @@
-wait 100000
+wait 60000
+led_print
 btn_pulse 0 0 6000
+wait 60000
+finish

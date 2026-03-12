@@ -37,3 +37,4 @@ btn_pulse 0 0 3000
 wait 3000
 btn_pulse 0 0 3000
 wait 3000
+finish

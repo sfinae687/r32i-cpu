@@ -39,6 +39,8 @@
 //   +TRACE_MMIO       Enable MMIO bus event prints
 //   +VCD=<file>       Write VCD waveform (default: tb_top.vcd)
 //   +NO_VCD           Suppress VCD dump
+//   +VCD_DUT_ONLY     Dump only tb_top.dut hierarchy (smaller, more stable)
+//   +VCD_AFTER_RESET  Start dumping after reset is released
 //
 // ---- Build & run (Icarus Verilog) ----
 //   cd /home/ll06/info/cpu_sources
@@ -112,13 +114,30 @@ module tb_top;
     // VCD dump
     // -------------------------------------------------------------------------
     reg [1023:0] vcd_file;
+    reg          vcd_dut_only;
+    reg          vcd_after_reset;
     initial begin
         if (!$test$plusargs("NO_VCD")) begin
             if ($value$plusargs("VCD=%s", vcd_file))
                 $dumpfile(vcd_file);
             else
                 $dumpfile("tb_top.vcd");
-            $dumpvars(0, tb_top);
+
+            vcd_dut_only    = $test$plusargs("VCD_DUT_ONLY");
+            vcd_after_reset = $test$plusargs("VCD_AFTER_RESET");
+
+            if (vcd_dut_only)
+                $dumpvars(0, tb_top.dut);
+            else
+                $dumpvars(0, tb_top);
+
+            // Optional: avoid reset chatter and reduce viewer load.
+            if (vcd_after_reset) begin
+                $dumpoff;
+                wait (rst_n === 1'b1);
+                @(posedge clk);
+                $dumpon;
+            end
         end
     end
 
@@ -647,6 +666,7 @@ module tb_top;
                         end else if (cmd == "finish") begin
                             // finish
                             $display("[SCRIPT] finish");
+                            $dumpflush;
                             $fclose(fd);
                             $finish;
 
@@ -842,6 +862,7 @@ module tb_top;
             led_print_all();
         end
 
+        $dumpflush;
         $finish;
     end
 
