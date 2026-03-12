@@ -1,6 +1,39 @@
 wait 200
-btn_pulse 0 0 5000
-wait 2000
-btn_pulse 0 0 1145
+btn_pulse 0 0 3000
 wait 3000
-btn_pulse 0 0 6000
+btn_pulse 0 0 3000
+wait 3000
+btn_pulse 0 0 3000
+wait 3000
+btn_pulse 0 0 3000
+wait 3000
+btn_pulse 0 0 3000
+wait 3000
+btn_pulse 0 0 3000
+wait 3000
+btn_pulse 0 0 3000
+wait 3000
+btn_pulse 0 0 3000
+wait 3000
+btn_pulse 0 0 3000
+wait 3000
+btn_pulse 0 0 3000
+wait 3000
+btn_pulse 0 0 3000
+wait 3000
+btn_pulse 0 0 3000
+wait 3000
+btn_pulse 0 0 3000
+wait 3000
+btn_pulse 0 0 3000
+wait 3000
+btn_pulse 0 0 3000
+wait 3000
+btn_pulse 0 0 3000
+wait 3000
+btn_pulse 0 0 3000
+wait 3000
+btn_pulse 0 0 3000
+wait 3000
+btn_pulse 0 0 3000
+wait 3000
