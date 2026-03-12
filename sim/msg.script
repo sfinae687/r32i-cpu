@@ -1,0 +1,6 @@
+wait 300
+uart_rx 6
+wait 2000
+uart_rx 7
+wait 3000
+led_print

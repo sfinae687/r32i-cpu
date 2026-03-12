@@ -22,8 +22,5 @@ loop:
 
     j loop
 
-end:
-    ebreak              # debug break
-
 hang:
     j hang              # infinite loop

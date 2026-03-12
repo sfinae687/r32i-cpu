@@ -11,4 +11,5 @@ void always() {
     for (int i=0; hello[i] != '\0'; ++i) {
         uart_putc(hello[i]);
     }
+    uart_putc('\n');
 }
