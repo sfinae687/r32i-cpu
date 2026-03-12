@@ -30,6 +30,7 @@ module top_circuit #(
     // UART external pins
     input  wire        uart_rx,
     output wire        uart_tx,
+    output wire        uart_irq,
 
     // GPIO external pin interface (directly connected to board pins)
     // 4x button devices (each 32-bit bitmap)

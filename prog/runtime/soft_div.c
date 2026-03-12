@@ -1,19 +1,36 @@
 /*
- * soft_div.c - Software division/modulo routines for RV32I
+ * soft_div.c - Software multiply/divide/modulo routines for RV32I
  *
- * RV32I has no hardware divide instructions, so the compiler emits calls to
- * these GCC runtime helpers whenever C code uses '/' or '%' on integer types.
+ * RV32I has no hardware multiply/divide instructions, so the compiler emits
+ * calls to these GCC runtime helpers whenever C code uses '*', '/' or '%'
+ * on integer types.
  * When built with -nostdlib (and no -lgcc), we must supply them ourselves.
  *
  * Symbols provided:
- *   __udivsi3   unsigned 32-bit division       (a / b)
+ *   __mulsi3    32-bit multiplication           (a * b), low 32 bits
+ *   __udivsi3   unsigned 32-bit division        (a / b)
  *   __umodsi3   unsigned 32-bit modulo          (a % b)
  *   __divsi3    signed   32-bit division        (a / b)
- *   __modsi3    signed   32-bit modulo           (a % b)
+ *   __modsi3    signed   32-bit modulo          (a % b)
  */
 
 typedef unsigned int  uint32;
 typedef   signed int  int32;
+
+unsigned int __mulsi3(unsigned int a, unsigned int b)
+{
+    uint32 result = 0;
+
+    while (b != 0) {
+        if (b & 1u) {
+            result += a;
+        }
+        a <<= 1;
+        b >>= 1;
+    }
+
+    return result;
+}
 
 /* ------------------------------------------------------------------ */
 /* Unsigned core: fills *rem_out (if non-NULL) and returns quotient.  */

@@ -148,7 +148,7 @@ module cpu(
                 3'b100: alu_ctrl = 4'b0011;  // XOR / XORI
                 3'b101: begin
                     // SRL / SRLI or SRA / SRAI
-                    if (is_r_type && funct7[5])
+                    if (funct7[5])
                         alu_ctrl = 4'b1000;  // SRA (arithmetic right shift)
                     else
                         alu_ctrl = 4'b0101;  // SRL / SRLI (logical right shift)
