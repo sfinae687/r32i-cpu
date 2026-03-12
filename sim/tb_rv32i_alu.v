@@ -24,6 +24,17 @@ module tb_rv32i_alu;
     // ============== Testbench Signals ==============
     reg clk = 1'b0;
     reg rst_n = 1'b0;
+    reg uart_rx = 1'b1;
+    reg [31:0] btn0 = 32'h0;
+    reg [31:0] btn1 = 32'h0;
+    reg [31:0] btn2 = 32'h0;
+    reg [31:0] btn3 = 32'h0;
+    wire uart_tx;
+    wire uart_irq;
+    wire [31:0] led0;
+    wire [31:0] led1;
+    wire [31:0] led2;
+    wire [31:0] led3;
     
     // Reference to internal CPU signals for monitoring
     wire [31:0] pc;
@@ -64,35 +75,46 @@ module tb_rv32i_alu;
 
     task load_default_alu_program;
         begin
-            dut.imem_inst.clear_to_nop();
+            dut.mem_ctrl_inst.imem_inst.clear_to_nop();
 
-            dut.imem_inst.write_instr(10'd0, 32'h00500093);   // ADDI x1, x0, 5
-            dut.imem_inst.write_instr(10'd1, 32'h00300113);   // ADDI x2, x0, 3
-            dut.imem_inst.write_instr(10'd2, 32'h002081B3);   // ADD  x3, x1, x2
-            dut.imem_inst.write_instr(10'd3, 32'h40218233);   // SUB  x4, x3, x2
-            dut.imem_inst.write_instr(10'd4, 32'h0021F2B3);   // AND  x5, x3, x2
-            dut.imem_inst.write_instr(10'd5, 32'h0021E333);   // OR   x6, x3, x2
-            dut.imem_inst.write_instr(10'd6, 32'h0021C3B3);   // XOR  x7, x3, x2
-            dut.imem_inst.write_instr(10'd7, 32'h0071F413);   // ANDI x8, x3, 7
-            dut.imem_inst.write_instr(10'd8, 32'h00F1E493);   // ORI  x9, x3, 15
-            dut.imem_inst.write_instr(10'd9, 32'h0031C513);   // XORI x10, x3, 3
-            dut.imem_inst.write_instr(10'd10, 32'h002095B3);  // SLL  x11, x1, x2
-            dut.imem_inst.write_instr(10'd11, 32'h0021D633);  // SRL  x12, x3, x2
-            dut.imem_inst.write_instr(10'd12, 32'h4021D6B3);  // SRA  x13, x3, x2
-            dut.imem_inst.write_instr(10'd13, 32'h00209713);  // SLLI x14, x1, 2
-            dut.imem_inst.write_instr(10'd14, 32'h0011D793);  // SRLI x15, x3, 1
-            dut.imem_inst.write_instr(10'd15, 32'h4011D813);  // SRAI x16, x3, 1
-            dut.imem_inst.write_instr(10'd16, 32'h0020A8B3);  // SLT  x17, x1, x2
-            dut.imem_inst.write_instr(10'd17, 32'h00A1A913);  // SLTI x18, x3, 10
-            dut.imem_inst.write_instr(10'd18, 32'h0020B9B3);  // SLTU x19, x1, x2
-            dut.imem_inst.write_instr(10'd19, 32'h00A1BA13);  // SLTIU x20, x3, 10
+            dut.mem_ctrl_inst.imem_inst.write_instr(10'd0, 32'h00500093);   // ADDI x1, x0, 5
+            dut.mem_ctrl_inst.imem_inst.write_instr(10'd1, 32'h00300113);   // ADDI x2, x0, 3
+            dut.mem_ctrl_inst.imem_inst.write_instr(10'd2, 32'h002081B3);   // ADD  x3, x1, x2
+            dut.mem_ctrl_inst.imem_inst.write_instr(10'd3, 32'h40218233);   // SUB  x4, x3, x2
+            dut.mem_ctrl_inst.imem_inst.write_instr(10'd4, 32'h0021F2B3);   // AND  x5, x3, x2
+            dut.mem_ctrl_inst.imem_inst.write_instr(10'd5, 32'h0021E333);   // OR   x6, x3, x2
+            dut.mem_ctrl_inst.imem_inst.write_instr(10'd6, 32'h0021C3B3);   // XOR  x7, x3, x2
+            dut.mem_ctrl_inst.imem_inst.write_instr(10'd7, 32'h0071F413);   // ANDI x8, x3, 7
+            dut.mem_ctrl_inst.imem_inst.write_instr(10'd8, 32'h00F1E493);   // ORI  x9, x3, 15
+            dut.mem_ctrl_inst.imem_inst.write_instr(10'd9, 32'h0031C513);   // XORI x10, x3, 3
+            dut.mem_ctrl_inst.imem_inst.write_instr(10'd10, 32'h002095B3);  // SLL  x11, x1, x2
+            dut.mem_ctrl_inst.imem_inst.write_instr(10'd11, 32'h0021D633);  // SRL  x12, x3, x2
+            dut.mem_ctrl_inst.imem_inst.write_instr(10'd12, 32'h4021D6B3);  // SRA  x13, x3, x2
+            dut.mem_ctrl_inst.imem_inst.write_instr(10'd13, 32'h00209713);  // SLLI x14, x1, 2
+            dut.mem_ctrl_inst.imem_inst.write_instr(10'd14, 32'h0011D793);  // SRLI x15, x3, 1
+            dut.mem_ctrl_inst.imem_inst.write_instr(10'd15, 32'h4011D813);  // SRAI x16, x3, 1
+            dut.mem_ctrl_inst.imem_inst.write_instr(10'd16, 32'h0020A8B3);  // SLT  x17, x1, x2
+            dut.mem_ctrl_inst.imem_inst.write_instr(10'd17, 32'h00A1A913);  // SLTI x18, x3, 10
+            dut.mem_ctrl_inst.imem_inst.write_instr(10'd18, 32'h0020B9B3);  // SLTU x19, x1, x2
+            dut.mem_ctrl_inst.imem_inst.write_instr(10'd19, 32'h00A1BA13);  // SLTIU x20, x3, 10
         end
     endtask
     
     // ============== DUT Instantiation ==============
     top_circuit dut(
         .clk(clk),
-        .rst_n(rst_n)
+        .rst_n(rst_n),
+        .uart_rx(uart_rx),
+        .uart_tx(uart_tx),
+        .uart_irq(uart_irq),
+        .btn0(btn0),
+        .btn1(btn1),
+        .btn2(btn2),
+        .btn3(btn3),
+        .led0(led0),
+        .led1(led1),
+        .led2(led2),
+        .led3(led3)
     );
     
     // ============== Clock Generation ==============
